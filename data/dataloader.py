@@ -1,5 +1,5 @@
 """
-Data loading utilities for Moonshine ASR fine-tuning.
+Data loading utilities for ASR fine-tuning.
 
 Supports:
 - HuggingFace datasets (Common Voice, LibriSpeech, etc.)
@@ -17,7 +17,7 @@ from datasets import Audio, Dataset, DatasetDict, load_dataset, load_from_disk
 
 class ASRDataloader:
     """
-    Flexible data loader for Moonshine fine-tuning.
+    Flexible data loader for fine-tuning.
 
     Supports multiple dataset formats and provides unified interface.
     """
@@ -62,19 +62,23 @@ class ASRDataloader:
         spont_speech = ds["spontaneous"]
 
         split_data = scripted_speech.train_test_split(
-            test_size= 1 - train_percent, seed = seed
+            test_size=1 - train_percent, seed=seed
         )
 
-        dataset_dict = DatasetDict({
-            "train": split_data["train"],
-            "test": split_data["test"],
-        })
+        dataset_dict = DatasetDict(
+            {
+                "train": split_data["train"],
+                "test": split_data["test"],
+            }
+        )
 
         # renaming from text to sentence to match rest of setup
         if "text" in dataset_dict["train"].column_names:
             dataset_dict = dataset_dict.rename_column("text", "sentence")
 
-        dataset_dict = dataset_dict.cast_column("audio", Audio(sampling_rate=self.sampling_rate))
+        dataset_dict = dataset_dict.cast_column(
+            "audio", Audio(sampling_rate=self.sampling_rate)
+        )
 
         dataset_dict.save_to_disk("./data/l2arctic_split")
 
@@ -383,7 +387,7 @@ class ASRDataloader:
         return dataset
 
     @classmethod
-    def from_config(cls, config: Dict[str, Any]) -> "MoonshineDataLoader":
+    def from_config(cls, config: Dict[str, Any]) -> "ASRDataloader":
         """
         Create data loader from configuration dictionary.
 
@@ -391,7 +395,7 @@ class ASRDataloader:
             config: Configuration dictionary with 'dataset' key
 
         Returns:
-            Initialized MoonshineDataLoader
+            Initialized ASRDataloader
         """
         dataset_config = config.get("dataset", {})
         sampling_rate = config.get("audio", {}).get("sampling_rate", 16000)
@@ -483,10 +487,9 @@ class ASRDataloader:
             else:
                 raise ValueError("Unknown processor output type")
 
-
             # Tokenize text (no BOS, add EOS)
             labels = processor.tokenizer(
-                batch[text_column], add_special_tokens=False
+                batch[text_column], add_special_tokens=True
             ).input_ids
             # batch["labels"] = labels + [2]  # Add EOS token
             batch["labels"] = labels
