@@ -9,10 +9,10 @@ Supports:
 """
 
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 
 import pandas as pd
-from datasets import Audio, Dataset, DatasetDict, load_dataset, load_from_disk
+from datasets import Audio, Dataset, DatasetDict, load_from_disk
 
 
 class ASRDataloader:
@@ -34,136 +34,6 @@ class ASRDataloader:
         """
         self.config = config or {}
         self.sampling_rate = sampling_rate
-
-    def load_l2arctic(
-        self,
-        train_percent: float = 0.88,
-        seed: int = 42,
-        cache_dir: Optional[str] = None,
-    ) -> DatasetDict:
-        """
-        Load KoelLabs L2Arctic and create train/test split from scripted subset.
-
-        Args:
-            train_fraction: Fraction used for training (default 0.88)
-            seed: Random seed for reproducibility
-            cache_dir: HuggingFace cache directory
-
-        Returns:
-            DatasetDict with train/test splits
-        """
-
-        print("\nLoading L2Arctic")
-        ds = load_dataset("KoelLabs/L2Arctic", cache_dir=cache_dir)
-
-        print(f"Available splits: {list(ds.keys())}")
-        combined = concatenate_datasets([])
-        scripted_speech = ds["scripted"]
-        spont_speech = ds["spontaneous"]
-
-        split_data = scripted_speech.train_test_split(
-            test_size=1 - train_percent, seed=seed
-        )
-
-        dataset_dict = DatasetDict(
-            {
-                "train": split_data["train"],
-                "test": split_data["test"],
-            }
-        )
-
-        # renaming from text to sentence to match rest of setup
-        if "text" in dataset_dict["train"].column_names:
-            dataset_dict = dataset_dict.rename_column("text", "sentence")
-
-        dataset_dict = dataset_dict.cast_column(
-            "audio", Audio(sampling_rate=self.sampling_rate)
-        )
-
-        dataset_dict.save_to_disk("./data/l2arctic_split")
-
-        print("L2Artic Dataset loaded:\n")
-        print(f"\tTrain samples: {len(dataset_dict['train']):,}")
-        print(f"\tTest samples: {len(dataset_dict['test']):,}")
-
-        return dataset_dict
-
-    def load_common_voice(
-        self,
-        language: str,
-        version: str = "13_0",
-        train_split: str = "train+validation",
-        test_split: str = "test",
-        cache_dir: Optional[str] = None,
-        use_auth_token: bool = True,
-    ) -> DatasetDict:
-        """
-        Load Common Voice dataset.
-
-        Args:
-            language: Language code (e.g., 'fr', 'en', 'de')
-            version: Common Voice version (default: '13_0')
-            train_split: Training split specification
-            test_split: Test split specification
-            cache_dir: Cache directory for downloaded data
-            use_auth_token: Use HuggingFace authentication token
-
-        Returns:
-            DatasetDict with 'train' and 'test' splits
-        """
-        dataset_name = f"mozilla-foundation/common_voice_{version}"
-
-        print(f"\nLoading Common Voice {version} - {language}")
-        print(f"  Dataset: {dataset_name}")
-        print(f"  Train split: {train_split}")
-        print(f"  Test split: {test_split}")
-
-        common_voice = DatasetDict()
-
-        # Load train split
-        common_voice["train"] = load_dataset(
-            dataset_name,
-            language,
-            split=train_split,
-            cache_dir=cache_dir,
-            token=use_auth_token,
-        )
-
-        # Load test split
-        common_voice["test"] = load_dataset(
-            dataset_name,
-            language,
-            split=test_split,
-            cache_dir=cache_dir,
-            token=use_auth_token,
-        )
-
-        # Select only needed columns
-        # Common Voice has: audio, sentence, and metadata
-        common_voice = common_voice.select_columns(["audio", "sentence"])
-
-        # Cast audio to target sampling rate
-        common_voice = common_voice.cast_column(
-            "audio", Audio(sampling_rate=self.sampling_rate)
-        )
-
-        print(f"\nDataset loaded:")
-        print(f"  Train samples: {len(common_voice['train']):,}")
-        print(f"  Test samples: {len(common_voice['test']):,}")
-
-        # Calculate total duration
-        train_duration = sum(
-            len(sample["audio"]["array"]) / sample["audio"]["sampling_rate"]
-            for sample in common_voice["train"].select(
-                range(min(1000, len(common_voice["train"])))
-            )
-        )
-        avg_duration = train_duration / min(1000, len(common_voice["train"]))
-        estimated_total = avg_duration * len(common_voice["train"]) / 3600
-
-        print(f"  Estimated train duration: {estimated_total:.1f} hours")
-
-        return common_voice
 
     def load_from_csv(
         self,
@@ -191,7 +61,7 @@ class ASRDataloader:
         Returns:
             DatasetDict with 'train' and 'test' splits
         """
-        print(f"\nLoading dataset from CSV:")
+        print("\nLoading dataset from CSV:")
         print(f"  Train: {train_csv}")
         print(f"  Test: {test_csv}")
 
@@ -231,109 +101,11 @@ class ASRDataloader:
 
         dataset_dict = DatasetDict({"train": train_dataset, "test": test_dataset})
 
-        print(f"\nDataset loaded:")
+        print("\nDataset loaded:")
         print(f"  Train samples: {len(train_dataset):,}")
         print(f"  Test samples: {len(test_dataset):,}")
 
         return dataset_dict
-
-    def load_librispeech(
-        self, subset: str = "clean", cache_dir: Optional[str] = None
-    ) -> DatasetDict:
-        """
-        Load LibriSpeech dataset.
-
-        Args:
-            subset: Subset name ('clean', 'other', 'clean-100', 'clean-360')
-            cache_dir: Cache directory for downloaded data
-
-        Returns:
-            DatasetDict with 'train' and 'test' splits
-        """
-        print(f"\nLoading LibriSpeech - {subset}")
-
-        if subset == "clean":
-            train_split = "train.clean.100+train.clean.360"
-            test_split = "test.clean"
-        elif subset == "other":
-            train_split = "train.other.500"
-            test_split = "test.other"
-        else:
-            train_split = f"train.{subset}"
-            test_split = "test.clean"
-
-        librispeech = DatasetDict()
-
-        librispeech["train"] = load_dataset(
-            "librispeech_asr", "clean", split=train_split, cache_dir=cache_dir
-        )
-
-        librispeech["test"] = load_dataset(
-            "librispeech_asr", "clean", split=test_split, cache_dir=cache_dir
-        )
-
-        # Rename columns to match Common Voice format
-        librispeech = librispeech.rename_column("text", "sentence")
-
-        # Cast audio to target sampling rate
-        librispeech = librispeech.cast_column(
-            "audio", Audio(sampling_rate=self.sampling_rate)
-        )
-
-        print(f"\nDataset loaded:")
-        print(f"  Train samples: {len(librispeech['train']):,}")
-        print(f"  Test samples: {len(librispeech['test']):,}")
-
-        return librispeech
-
-    def load_mls(
-        self,
-        language: str = "french",
-        split_train: str = "train",
-        split_test: str = "test",
-        cache_dir: Optional[str] = None,
-    ) -> DatasetDict:
-        """
-        Load Multilingual LibriSpeech (MLS) dataset.
-
-        Args:
-            language: Language subset ('french', 'german', 'dutch', 'spanish', 'italian', 'portuguese', 'polish')
-            split_train: Training split name
-            split_test: Test split name
-            cache_dir: Cache directory for downloaded data
-
-        Returns:
-            DatasetDict with 'train' and 'test' splits
-        """
-        print(f"\nLoading Multilingual LibriSpeech - {language}")
-
-        mls = DatasetDict()
-
-        mls["train"] = load_dataset(
-            "facebook/multilingual_librispeech",
-            language,
-            split=split_train,
-            cache_dir=cache_dir,
-        )
-
-        mls["test"] = load_dataset(
-            "facebook/multilingual_librispeech",
-            language,
-            split=split_test,
-            cache_dir=cache_dir,
-        )
-
-        # Rename columns to match Common Voice format
-        mls = mls.rename_column("transcript", "sentence")
-
-        # Cast audio to target sampling rate
-        mls = mls.cast_column("audio", Audio(sampling_rate=self.sampling_rate))
-
-        print(f"\nDataset loaded:")
-        print(f"  Train samples: {len(mls['train']):,}")
-        print(f"  Test samples: {len(mls['test']):,}")
-
-        return mls
 
     def load_local(self, path: str, text_column: str = "transcript") -> DatasetDict:
         """
@@ -353,7 +125,7 @@ class ASRDataloader:
         # Check if it's already a DatasetDict or a single Dataset
         if isinstance(dataset, DatasetDict):
             # Already has train/test splits
-            print(f"\nDataset loaded:")
+            print("\nDataset loaded:")
             print(f"  Train samples: {len(dataset['train']):,}")
             print(f"  Test samples: {len(dataset['test']):,}")
 
@@ -413,40 +185,13 @@ class ASRDataloader:
         dataset_type = dataset_config.get("type", "common_voice")
         dataset_name = dataset_config.get("name", "")
 
-        if dataset_type == "common_voice":
-            return self.load_common_voice(
-                language=dataset_config.get("language", "en"),
-                version=dataset_config.get("version", "13_0"),
-                train_split=dataset_config.get("train_split", "train+validation"),
-                test_split=dataset_config.get("test_split", "test"),
-                cache_dir=dataset_config.get("cache_dir"),
-                use_auth_token=dataset_config.get("use_auth_token", True),
-            )
-        elif dataset_type == "csv":
+        if dataset_type == "csv":
             return self.load_from_csv(
                 train_csv=dataset_config.get("train_csv"),
                 test_csv=dataset_config.get("test_csv"),
                 audio_column=dataset_config.get("audio_column", "audio_path"),
                 text_column=dataset_config.get("text_column", "transcription"),
                 base_path=dataset_config.get("base_path"),
-            )
-        elif dataset_type == "librispeech":
-            return self.load_librispeech(
-                subset=dataset_config.get("subset", "clean"),
-                cache_dir=dataset_config.get("cache_dir"),
-            )
-        elif dataset_type == "mls":
-            return self.load_mls(
-                language=dataset_config.get("language", "french"),
-                split_train=dataset_config.get("split_train", "train"),
-                split_test=dataset_config.get("split_test", "test"),
-                cache_dir=dataset_config.get("cache_dir"),
-            )
-        elif dataset_type == "l2arctic" or dataset_name == "KoelLabs/L2Arctic":
-            return self.load_l2arctic(
-                train_percent=dataset_config.get("train_percent", 0.9),
-                seed=dataset_config.get("seed", 42),
-                cache_dir=dataset_config.get("cache_dir"),
             )
         elif dataset_type == "local":
             return self.load_local(
