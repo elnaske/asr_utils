@@ -15,7 +15,7 @@ import pandas as pd
 from datasets import Audio, Dataset, DatasetDict, load_dataset, load_from_disk
 
 
-class MoonshineDataLoader:
+class ASRDataloader:
     """
     Flexible data loader for Moonshine fine-tuning.
 
@@ -476,13 +476,20 @@ class MoonshineDataLoader:
                 sampling_rate=audio["sampling_rate"],
                 return_tensors="pt",
             )
-            batch["input_values"] = inputs.input_values[0]
+            if hasattr(inputs, "input_values"):
+                batch["input_features"] = inputs.input_values[0]
+            elif hasattr(inputs, "input_features"):
+                batch["input_features"] = inputs.input_features[0]
+            else:
+                raise ValueError("Unknown processor output type")
+
 
             # Tokenize text (no BOS, add EOS)
             labels = processor.tokenizer(
                 batch[text_column], add_special_tokens=False
             ).input_ids
-            batch["labels"] = labels + [2]  # Add EOS token
+            # batch["labels"] = labels + [2]  # Add EOS token
+            batch["labels"] = labels
 
             # Store audio duration for curriculum filtering and length bucketing
             batch["duration"] = len(audio["array"]) / audio["sampling_rate"]
