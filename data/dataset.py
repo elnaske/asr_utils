@@ -2,25 +2,30 @@ import torch
 from torch.utils.data import Dataset
 from torchaudio import load
 from torch.nn.utils.rnn import pad_sequence
+import csv
+
 
 class ASRDataset(Dataset):
-    def __init__(self, paths_txt):
-        with open(paths_txt, 'r') as f:
-            lines = f.readlines()
-
-        self.paths = [] # paths to audio files
+    def __init__(self, paths_tsv):
+        self.paths = []  # paths to audio files
         self.refs = []  # audio transcripts
-        self.metas = [] # meta information (e.g. speaker identity)
+        self.metas = []  # meta information (e.g. speaker identity)
 
-        for line in lines:
-            args = line.strip().split('\t')
+        with open(paths_tsv, 'r') as f:
+            reader = csv.reader(f, delimiter='\t')
+            headings = next(reader)
+            n_col = len(headings)
 
-            assert len(args) >= 2
+            if n_col < 2:
+                raise RuntimeError(
+                    f"Error reading file {paths_tsv}: File has fewer than two columns, when it should have at least paths and transcripts")
 
-            self.paths += [args[0]]
-            self.refs += [args[1]]
-            if len(args) > 2:
-                self.metas += [tuple(args[2:])]
+            for row in reader:
+                self.paths += [row[0]]
+                self.refs += [row[1]]
+                if n_col > 2:
+                    self.metas += [{headings[i]: row[i]
+                                    for i in range(2, n_col)}]
 
     def __len__(self):
         return len(self.paths)
@@ -29,7 +34,7 @@ class ASRDataset(Dataset):
         audio, sr = load(self.paths[idx])
 
         return audio, self.refs[idx], self.metas[idx] if self.metas else None
-    
+
 
 def asr_collate(batch):
     audios, refs, meta = zip(*batch)
@@ -39,12 +44,12 @@ def asr_collate(batch):
 
     for audio in audios:
         if audio.dim() == 1:
-            audio = audio.unsqueeze(0) # (1, T)
-        processed += [audio.transpose(0, 1)] # (T, C)
+            audio = audio.unsqueeze(0)  # (1, T)
+        processed += [audio.transpose(0, 1)]  # (T, C)
         ilens += [audio.shape[-1]]
 
-    padded = pad_sequence(processed, batch_first=True) # (B, T_max, C)
-    padded = padded.transpose(1, 2) # (B, C, T_max)
+    padded = pad_sequence(processed, batch_first=True)  # (B, T_max, C)
+    padded = padded.transpose(1, 2)  # (B, C, T_max)
 
     ilens = torch.tensor(ilens)
 
