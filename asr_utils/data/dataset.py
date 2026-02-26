@@ -23,9 +23,8 @@ class ASRDataset(Dataset):
             for row in reader:
                 self.paths += [row[0]]
                 self.refs += [row[1]]
-                if n_col > 2:
-                    self.metas += [{headings[i]: row[i]
-                                    for i in range(2, n_col)}]
+                meta = {headings[i]: row[i] for i in range(2, n_col)} if n_col > 2 else {}
+                self.metas += [meta]
 
     def __len__(self):
         return len(self.paths)
@@ -33,7 +32,7 @@ class ASRDataset(Dataset):
     def __getitem__(self, idx):
         audio, sr = load(self.paths[idx])
 
-        return audio, self.refs[idx], self.metas[idx] if self.metas else None
+        return audio, self.refs[idx], self.metas[idx]
 
 
 def asr_collate(batch):
