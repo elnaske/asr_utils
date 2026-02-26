@@ -50,7 +50,8 @@ def main():
 
                 intelligibility = 0
                 for dim in f["Ratings"]:
-                    if dim["Dimension Description"].strip().lower() in ["intelligibility", "intelligbility"]:
+                    if dim["Dimension Description"].strip().lower() in ["intelligibility", "intelligbility"] \
+                            and dim["Level"]:
                         intelligibility = int(dim["Level"])
 
                 writer.writerow([path, transcript, etiology,
