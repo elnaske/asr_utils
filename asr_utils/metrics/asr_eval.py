@@ -3,6 +3,9 @@ from jiwer import wer, cer
 from typing import Tuple, Union
 from pathlib import Path
 
+# TODO:
+# - load queries from file
+# - grouped eval?
 
 class ASREval:
     def __init__(
