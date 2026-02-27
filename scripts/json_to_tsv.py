@@ -29,7 +29,7 @@ def parse_args(parser):
 
             if output.parts[-1].endswith(".tsv"):
                 merge_files = True
-                output.parents[0].mkdir(parents=True, exist_ok=True)
+                output.parent.mkdir(parents=True, exist_ok=True)
                 OUTFILES = [output] * len(INFILES)
             elif not '.' in output.parts[-1]:
                 # output is not a file, therefore a directory
@@ -40,7 +40,7 @@ def parse_args(parser):
                     f"Unsupported file extension `.{output.parts[-1].split('.')[-1]}`")
 
     if len(OUTFILES) <= 1:
-        OUTFILES = [out_dir / (f.split('.')[0] + ".tsv") for f in INFILES]
+        OUTFILES = [out_dir / (Path(f).parts[-1].split('.')[0] + ".tsv") for f in INFILES]
 
     return INFILES, OUTFILES, merge_files
 
@@ -51,13 +51,19 @@ def write_header(headings, outfile):
         writer.writerow(headings)
 
 
-def parse_json_and_append(json_data, outfile):
+def parse_json_and_append(infile, outfile):
+    with open(infile, 'r') as f:
+        json_data = json.load(f)
+    
     etiology = json_data["Etiology"]
+
+    # assuming JSON is in same dir as audio files
+    root = Path(infile).parent.absolute()
 
     with open(outfile, 'a') as outfile:
         writer = csv.writer(outfile, delimiter='\t')
         for f in json_data["Files"]:
-            path = str(Path.cwd() / f["Filename"])
+            path = str(root / f["Filename"])
 
             transcript = f["Prompt"]["Transcript"].strip()
             # replacing \u00a0, a non-printable ascii char
@@ -85,14 +91,12 @@ def main():
     headings = ["path", "transcript", "etiology",
                 "prompt_category", "intelligibility"]
 
-    for i, (OUTFILE, INFILE) in enumerate(zip(OUTFILES, INFILES)):
+    for i, (INFILE, OUTFILE) in enumerate(zip(INFILES, OUTFILES)):
         if i == 0 or not merge_files:
             write_header(headings, OUTFILE)
 
-        with open(INFILE, 'r') as infile:
-            json_data = json.load(infile)
 
-        parse_json_and_append(json_data, OUTFILE)
+        parse_json_and_append(INFILE, OUTFILE)
 
 
 if __name__ == "__main__":
