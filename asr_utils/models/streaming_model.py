@@ -13,7 +13,7 @@ class StreamingASRModel(L.LightningModule):
 
         if missing_methods:
             raise NotImplementedError(
-                f"Model is missing the following required methods: {", ".join([missing_methods])}")
+                f"Model is missing the following required methods: {", ".join(missing_methods)}")
 
         self.model.set_partial_callback(lambda x: None)
         self.chunk_size = chunk_size

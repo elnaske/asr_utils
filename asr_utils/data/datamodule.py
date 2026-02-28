@@ -1,11 +1,11 @@
 import lightning as L
 from asr_utils.data import ASRDataset, asr_collate
 from torch.utils.data import DataLoader
-import librosa
+import torchaudio
 from typing import Callable
 
 class ASRDataModule(L.LightningDataModule):
-    def __init__(self, train_tsv: str, val_tsv: str, batch_size: int, load_fn: Callable = librosa.load):
+    def __init__(self, train_tsv: str, val_tsv: str, batch_size: int, load_fn: Callable = torchaudio.load):
         super().__init__()
         self.train_tsv = train_tsv
         self.val_tsv = val_tsv
