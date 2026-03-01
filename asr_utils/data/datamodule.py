@@ -22,6 +22,9 @@ class ASRDataModule(L.LightningDataModule):
     def val_dataloader(self):
         return DataLoader(self.val_set, batch_size=self.batch_size, collate_fn=asr_collate)
     
+    def predict_dataloader(self):
+        return self.val_dataloader()
+    
     def transfer_batch_to_device(self, batch, device, dataloader_idx):
         batch["audio"] = batch["audio"].to(device)
         batch["ilens"] = batch["ilens"].to(device)
