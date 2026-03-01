@@ -54,20 +54,22 @@ def data_tsv_invalid(tmp_path, audio_files):
 
 def test_asr_dataset(data_tsv):
     ds = ASRDataset(data_tsv)
-    audio, ref, meta = ds[0]
+    audio, ref, key, meta = ds[0]
 
     assert isinstance(audio, torch.Tensor)
     assert isinstance(ref, str)
+    assert isinstance(key, str)
     assert isinstance(meta, dict)
     assert "etiology" in meta.keys()
 
 
 def test_asr_dataset_no_meta(data_tsv_no_meta):
     ds = ASRDataset(data_tsv_no_meta)
-    audio, ref, meta = ds[0]
+    audio, ref, key, meta = ds[0]
 
     assert isinstance(audio, torch.Tensor)
     assert isinstance(ref, str)
+    assert isinstance(key, str)
     assert isinstance(meta, dict)
 
 
@@ -92,6 +94,10 @@ def test_asr_collate(data_tsv):
         assert "refs" in batch
         assert isinstance(batch["refs"], tuple)
         assert isinstance(batch["refs"][0], str)
+        
+        assert "keys" in batch
+        assert isinstance(batch["keys"], tuple)
+        assert isinstance(batch["keys"][0], str)
 
         assert "meta" in batch
         assert isinstance(batch["meta"], tuple)

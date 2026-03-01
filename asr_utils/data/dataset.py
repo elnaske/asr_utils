@@ -36,11 +36,11 @@ class ASRDataset(Dataset):
     def __getitem__(self, idx):
         audio, sr = self.load_fn(self.paths[idx])
 
-        return audio, self.refs[idx], self.metas[idx]
+        return audio, self.refs[idx], self.paths[idx], self.metas[idx]
 
 
 def asr_collate(batch):
-    audios, refs, meta = zip(*batch)
+    audios, refs, keys, meta = zip(*batch)
 
     processed = []
     ilens = []
@@ -60,5 +60,6 @@ def asr_collate(batch):
         "audio": padded,
         "ilens": ilens,
         "refs": refs,
+        "keys": keys,
         "meta": meta,
     }

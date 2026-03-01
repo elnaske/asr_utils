@@ -29,6 +29,10 @@ def test_asr_data_module(data_tsv):
         assert "refs" in batch
         assert isinstance(batch["refs"], tuple)
         assert isinstance(batch["refs"][0], str)
+        
+        assert "keys" in batch
+        assert isinstance(batch["keys"], tuple)
+        assert isinstance(batch["keys"][0], str)
 
         assert "meta" in batch
         assert isinstance(batch["meta"], tuple)
