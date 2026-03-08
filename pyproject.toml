@@ -3,7 +3,7 @@ name = "asr-utils"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
     "librosa>=0.11.0",
     "nemo-toolkit[asr]",
