@@ -1,15 +1,19 @@
 import torch
 from torch.utils.data import Dataset
-from torchaudio import load
+import torchaudio
 from torch.nn.utils.rnn import pad_sequence
 import csv
+from typing import Union, Callable
+from pathlib import Path
 
 
 class ASRDataset(Dataset):
-    def __init__(self, paths_tsv):
+    def __init__(self, paths_tsv: Union[Path, str], load_fn: Callable = torchaudio.load):
         self.paths = []  # paths to audio files
         self.refs = []  # audio transcripts
         self.metas = []  # meta information (e.g. speaker identity)
+
+        self.load_fn = load_fn
 
         with open(paths_tsv, 'r') as f:
             reader = csv.reader(f, delimiter='\t')
@@ -30,13 +34,13 @@ class ASRDataset(Dataset):
         return len(self.paths)
 
     def __getitem__(self, idx):
-        audio, sr = load(self.paths[idx])
+        audio, sr = self.load_fn(self.paths[idx])
 
-        return audio, self.refs[idx], self.metas[idx]
+        return audio, self.refs[idx], self.paths[idx], self.metas[idx]
 
 
 def asr_collate(batch):
-    audios, refs, meta = zip(*batch)
+    audios, refs, keys, meta = zip(*batch)
 
     processed = []
     ilens = []
@@ -56,5 +60,6 @@ def asr_collate(batch):
         "audio": padded,
         "ilens": ilens,
         "refs": refs,
+        "keys": keys,
         "meta": meta,
     }

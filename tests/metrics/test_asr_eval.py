@@ -23,7 +23,7 @@ def hyps_tsv(tmp_path):
     with open(tmp_path / "hyps.tsv", "w") as f:
         writer = csv.writer(f, delimiter='\t')
         writer.writerows(
-            [["path", "hypotheses"],
+            [["path", "hypothesis"],
              ["a.wav", "hello world"],
              ["b.wav", "wreck a nice beach"],
              ["c.wav", "what would you do?"]]

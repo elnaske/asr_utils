@@ -14,7 +14,7 @@ class ASREval:
         hyps_tsv: Union[Path, str],
         key: str = "path",
         refs_col: str = "transcript",
-        hyps_col: str = "hypotheses",
+        hyps_col: str = "hypothesis",
         join: str = "inner",
     ):
         """Joins the TSV files containing the ASR hypotheses and reference transcriptions on the specified key.
@@ -25,7 +25,7 @@ class ASREval:
             hyps_tsv (Union[Path, str]): Path to the TSV containig the hypotheses. Should only have two columns: `key` and `hyps_col`.
             key (str, optional): Key used for joining the TSVs. Defaults to "path".
             refs_col (str, optional): Column in `refs_tsv` containing the references. Defaults to "transcript".
-            hyps_col (str, optional): Column in `hyps_tsv` containing the hypotheses. Defaults to "hypotheses".
+            hyps_col (str, optional): Column in `hyps_tsv` containing the hypotheses. Defaults to "hypothesis".
             join (str, optional): Type of join used. Defaults to "inner".
 
         Raises:
