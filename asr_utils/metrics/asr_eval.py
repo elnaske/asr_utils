@@ -41,7 +41,7 @@ class ASREval:
 
         if not refs_file.suffix in supported or not hyps_file.suffix in supported:
             raise ValueError(
-                f"File format not supported. Supported formats: {", ".join(list(supported))}")
+                f"File format not supported. Supported formats: {', '.join(list(supported))}")
 
         if sep:
             refs_sep = hyps_sep = sep
