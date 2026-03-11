@@ -27,8 +27,8 @@ class InvalidModel:
         pass
 
 
-def test_streaming_asr_model():
-    StreamingASRModel(Model, logging_dir='.', chunk_size=32)
+def test_streaming_asr_model(tmp_path):
+    StreamingASRModel(Model, logging_dir=tmp_path, chunk_size=32)
 
     with pytest.raises(NotImplementedError):
-        StreamingASRModel(InvalidModel, logging_dir='.', chunk_size=32)
+        StreamingASRModel(InvalidModel, logging_dir=tmp_path, chunk_size=32)
