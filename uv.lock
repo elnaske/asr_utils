@@ -243,7 +243,7 @@ requires-dist = [
     { name = "peft", specifier = ">=0.18.1" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "torch", specifier = ">=2.5.0" },
-    { name = "torchaudio", specifier = ">=2.10.0" },
+    { name = "torchaudio", specifier = ">=2.5.0" },
     { name = "torchcodec", specifier = ">=0.10.0" },
 ]
 
