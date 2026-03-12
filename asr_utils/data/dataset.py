@@ -19,7 +19,7 @@ class ASRDataset(Dataset):
         self.load_fn = load_fn
 
         with open(paths_csv, "r") as f:
-            reader = csv.reader(f, delimiter=",")
+            reader = csv.DictReader(f, delimiter=",")
             headings = next(reader)
             n_col = len(headings)
 
@@ -30,13 +30,15 @@ class ASRDataset(Dataset):
 
             for row in reader:
                 # adjusted to include full file path.
-                self.paths += [row[3]]
-                self.ids += [row[0]]
-                self.refs += [row[7]]
+                self.paths.append(row["audio_filepath"])
+                self.ids.append(row["id"])
+                self.refs.append(row["norm_text_without_disfluency"])
                 # need to handle this section better
-                meta = (
-                    {headings[i]: row[i] for i in range(0, n_col)} if n_col > 3 else {}
-                )
+                meta = {
+                    k: v
+                    for k, v in row.items()
+                    if k not in ["audio_filepath", "id", "norm_text_without_disfluency"]
+                }
                 self.metas += [meta]
 
     def __len__(self):
