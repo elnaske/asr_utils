@@ -13,6 +13,7 @@ class ASRDataset(Dataset):
         paths_csv: Union[Path, str],
         load_fn: Callable = torchaudio.load,
         use_full_fp: bool = False,
+        data_path: Union[Path, str, None] = None,
     ):
         self.paths = []  # paths to audio files
         self.refs = []  # audio transcripts
@@ -33,8 +34,8 @@ class ASRDataset(Dataset):
 
             for row in reader:
                 # adjusted to include full file path. Handles Bug in BR
-                if use_full_fp:
-                    self.paths.append(str(paths_csv) + row["audio_filepath"])
+                if use_full_fp and data_path is not None:
+                    self.paths.append(str(data_path) + row["audio_filepath"])
                 else:
                     self.paths.append(row["audio_filepath"])
                 self.ids.append(row["id"])
