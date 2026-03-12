@@ -9,7 +9,10 @@ from pathlib import Path
 
 class ASRDataset(Dataset):
     def __init__(
-        self, paths_csv: Union[Path, str], load_fn: Callable = torchaudio.load
+        self,
+        paths_csv: Union[Path, str],
+        load_fn: Callable = torchaudio.load,
+        use_full_fp: bool = False,
     ):
         self.paths = []  # paths to audio files
         self.refs = []  # audio transcripts
@@ -29,8 +32,11 @@ class ASRDataset(Dataset):
                 )
 
             for row in reader:
-                # adjusted to include full file path.
-                self.paths.append(row["audio_filepath"])
+                # adjusted to include full file path. Handles Bug in BR
+                if use_full_fp:
+                    self.paths.append(str(paths_csv) + row["audio_filepath"])
+                else:
+                    self.paths.append(row["audio_filepath"])
                 self.ids.append(row["id"])
                 self.refs.append(row["norm_text_without_disfluency"])
                 # need to handle this section better
