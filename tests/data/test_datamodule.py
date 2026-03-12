@@ -1,14 +1,14 @@
 import pytest
 from asr_utils.data import ASRDataModule
-from .test_dataset import audio_files, data_tsv
+from .test_dataset import audio_files, data_csv
 import torch
 from torch.utils.data import DataLoader
 
 
-def test_asr_data_module(data_tsv):
+def test_asr_data_module(data_csv):
     data = ASRDataModule(
-        train_tsv=data_tsv,
-        val_tsv=data_tsv,
+        train_tsv=data_csv,
+        val_tsv=data_csv,
         batch_size=2,
     )
     data.setup(stage="fit")
@@ -29,7 +29,7 @@ def test_asr_data_module(data_tsv):
         assert "refs" in batch
         assert isinstance(batch["refs"], tuple)
         assert isinstance(batch["refs"][0], str)
-        
+
         assert "keys" in batch
         assert isinstance(batch["keys"], tuple)
         assert isinstance(batch["keys"][0], str)

@@ -8,26 +8,35 @@ from pathlib import Path
 
 
 class ASRDataset(Dataset):
-    def __init__(self, paths_tsv: Union[Path, str], load_fn: Callable = torchaudio.load):
+    def __init__(
+        self, paths_csv: Union[Path, str], load_fn: Callable = torchaudio.load
+    ):
         self.paths = []  # paths to audio files
         self.refs = []  # audio transcripts
+        self.ids = []  # utterance ids, need for their evaluation
         self.metas = []  # meta information (e.g. speaker identity)
 
         self.load_fn = load_fn
 
-        with open(paths_tsv, 'r') as f:
-            reader = csv.reader(f, delimiter='\t')
+        with open(paths_csv, "r") as f:
+            reader = csv.reader(f, delimiter=",")
             headings = next(reader)
             n_col = len(headings)
 
-            if n_col < 2:
+            if n_col < 3:
                 raise RuntimeError(
-                    f"Error reading file {paths_tsv}: File has fewer than two columns, when it should have at least paths and transcripts")
+                    f"Error reading file {paths_csv}: File has fewer than three columns, when it should have at least paths, ids, and transcripts"
+                )
 
             for row in reader:
-                self.paths += [row[0]]
-                self.refs += [row[1]]
-                meta = {headings[i]: row[i] for i in range(2, n_col)} if n_col > 2 else {}
+                # adjusted to include full file path.
+                self.paths += [row[3]]
+                self.ids += [row[0]]
+                self.refs += [row[7]]
+                # need to handle this section better
+                meta = (
+                    {headings[i]: row[i] for i in range(0, n_col)} if n_col > 3 else {}
+                )
                 self.metas += [meta]
 
     def __len__(self):
@@ -36,6 +45,7 @@ class ASRDataset(Dataset):
     def __getitem__(self, idx):
         audio, sr = self.load_fn(self.paths[idx])
 
+        # considering adding return of self.ids[idx]
         return audio, self.refs[idx], self.paths[idx], self.metas[idx]
 
 
