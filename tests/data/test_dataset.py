@@ -25,11 +25,11 @@ def data_csv(tmp_path, audio_files):
                 "id",
                 "speaker",
                 "etiology",
-                "path",
+                "audio_filepath",
                 "duration",
                 "text",
-                "text_disfluency",
-                "text_wo_disfluency",
+                "norm_text_with_disfluency",
+                "norm_text_without_disfluency",
             ]
         )
 
@@ -45,7 +45,7 @@ def data_csv(tmp_path, audio_files):
 def data_csv_no_meta(tmp_path, audio_files):
     with open(tmp_path / "data_no_meta.csv", "w") as f:
         writer = csv.writer(f, delimiter=",")
-        writer.writerow(["id", "path", "transcript"])
+        writer.writerow(["id", "audio_filepath", "norm_text_without_disfluency"])
 
         for wav in audio_files:
             writer.writerow(["id", str(wav), "test"])
