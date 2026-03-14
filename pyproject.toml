@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "cuda-bindings>=13.0.0",
     "jiwer>=3.1.0",
     "librosa>=0.11.0",
     "lightning>=2.4.0",
@@ -18,8 +19,5 @@ dependencies = [
 
 [dependency-groups]
 nemo = [
-    "nemo-toolkit[asr]",
+    "nemo-toolkit[asr]>=2.7.0",
 ]
-
-[tool.uv.sources]
-nemo-toolkit = { git = "https://github.com/NVIDIA-NeMo/NeMo" }
