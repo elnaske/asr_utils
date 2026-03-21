@@ -28,16 +28,23 @@ def merge_lora(
 
     lora_model = get_peft_model(base_model, lora_cfg)
 
-    ckpt = torch.load(ckpt_path, map_location=device)
+    ckpt = torch.load(ckpt_path, map_location=device, weights_only=False)
     if "state_dict" in ckpt:
         state_dict = ckpt["state_dict"]
     else:
         state_dict = ckpt
+
+    # handling Lora keeping the "base_model" prefix
+    if not any(k.startswith("base_model.model.") for k in state_dict):
+        state_dict = {f"base_model.model.{k}": v for k, v in state_dict.items()}
+
     missing, unexpected = lora_model.load_state_dict(state_dict, strict=False)
 
     # what we missin?
     print(f"Missing: {missing[:20]}")
     print(f"Unexpected: {unexpected[:20]}")
+    print(f"Total Missing: {len(missing)}")
+    print(f"Total Unexpected: {len(unexpected)}")
 
     # take a look at the docs for .merge_and_unload() but this is what we need to run LoRA models
     merged_model = lora_model.merge_and_unload()
