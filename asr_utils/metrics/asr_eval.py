@@ -64,7 +64,7 @@ class ASREval:
         )
         merged[refs_col] = merged[refs_col].astype(str).str.strip()
         merged[hyps_col] = merged[hyps_col].astype(str).str.strip()
-        self.df = merged[(self.df[refs_col] != "") & (self.df[hyps_col] != "")].copy()
+        self.df = merged[(merged[refs_col] != "") & (merged[hyps_col] != "")].copy()
 
         self.refs_col = refs_col
         self.hyps_col = hyps_col
