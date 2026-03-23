@@ -59,7 +59,9 @@ class ASREval:
             raise ValueError(f"Column `{hyps_col}` not found in `{hyps_file}`.")
 
         # BHG - adding dropna to handle missing columns
-        self.df = pd.merge(refs_df, hyps_df, how=join, on=key).dropna(subset=[refs_col, hyps_col)
+        self.df = pd.merge(refs_df, hyps_df, how=join, on=key).dropna(
+            subset=[refs_col, hyps_col]
+        )
         self.refs_col = refs_col
         self.hyps_col = hyps_col
 
