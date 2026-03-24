@@ -23,7 +23,7 @@ class ASREval:
         Allows WER and CER to be calculated for a subset of the data using a dataframe query.
 
         Args:
-            refs_file (Union[Path, str]): Path to the CSV/TSV containing the references and metadata. 
+            refs_file (Union[Path, str]): Path to the CSV/TSV containing the references and metadata.
             hyps_file (Union[Path, str]): Path to the CSV/TSV containig the hypotheses. Should only have two columns: `key` and `hyps_col`.
             key (str, optional): Key used for joining the files' columns. Defaults to "path".
             refs_col (str, optional): Column in `refs_file` containing the references. Defaults to "transcript".
@@ -32,7 +32,7 @@ class ASREval:
             sep (str, optional): Separator used for reading files. If none, infers the separator from file suffix (',' for CSV). Defaults to None.
 
         Raises:
-            ValueError: Column provided does not exist in the respective TSV. 
+            ValueError: Column provided does not exist in the respective TSV.
         """
         refs_file = Path(refs_file)
         hyps_file = Path(hyps_file)
@@ -41,25 +41,31 @@ class ASREval:
 
         if not refs_file.suffix in supported or not hyps_file.suffix in supported:
             raise ValueError(
-                f"File format not supported. Supported formats: {', '.join(list(supported))}")
+                f"File format not supported. Supported formats: {', '.join(list(supported))}"
+            )
 
         if sep:
             refs_sep = hyps_sep = sep
         else:
-            refs_sep = ',' if refs_file.suffix == ".csv" else '\t'
-            hyps_sep = ',' if hyps_file.suffix == ".csv" else '\t'
+            refs_sep = "," if refs_file.suffix == ".csv" else "\t"
+            hyps_sep = "," if hyps_file.suffix == ".csv" else "\t"
 
         refs_df = pd.read_csv(refs_file, sep=refs_sep)
         hyps_df = pd.read_csv(hyps_file, sep=hyps_sep)
 
         if refs_col not in refs_df.columns:
-            raise ValueError(
-                f"Column `{refs_col}` not found in `{refs_file}`.")
+            raise ValueError(f"Column `{refs_col}` not found in `{refs_file}`.")
         if hyps_col not in hyps_df.columns:
-            raise ValueError(
-                f"Column `{hyps_col}` not found in `{hyps_file}`.")
+            raise ValueError(f"Column `{hyps_col}` not found in `{hyps_file}`.")
 
-        self.df = pd.merge(refs_df, hyps_df, how=join, on=key)
+        # BHG - adding dropna to handle missing columns
+        merged = pd.merge(refs_df, hyps_df, how=join, on=key).dropna(
+            subset=[refs_col, hyps_col]
+        )
+        merged[refs_col] = merged[refs_col].astype(str).str.strip()
+        merged[hyps_col] = merged[hyps_col].astype(str).str.strip()
+        self.df = merged[(merged[refs_col] != "") & (merged[hyps_col] != "")].copy()
+
         self.refs_col = refs_col
         self.hyps_col = hyps_col
 
