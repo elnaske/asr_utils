@@ -1,3 +1,5 @@
+from asr_utils.metrics import trn_utils
+from asr_utils.metrics.sgml_utils import compute_from_sgml
 import pandas as pd
 import jiwer
 from typing import Optional, Tuple, Union
@@ -19,7 +21,8 @@ class ASREval:
         hyps_col: str = "hypothesis",
         join: str = "inner",
         sep: str = None,
-        ref_trn: Optional[Union[Path, str]] = None,
+        ref_trn1: Optional[Union[Path, str]] = None,
+        ref_trn2: Optional[Union[Path, str]] = None,
         hyp_trn: Optional[Union[Path, str]] = None,
         tmp_dir: Optional[Union[Path, str]] = None,
         sclite: bool = False,
@@ -35,7 +38,8 @@ class ASREval:
             hyps_col (str, optional): Column in `hyps_file` containing the hypotheses. Defaults to "hypothesis".
             join (str, optional): Type of join used. Defaults to "inner".
             sep (str, optional): Separator used for reading files. If none, infers the separator from file suffix (',' for CSV). Defaults to None.
-            ref_trn (Optional[Union[Path, str]]): Path to reference TRN file for SClite eval.
+            ref_trn1 (Optional[Union[Path, str]]): Path to reference TRN file for SClite eval.
+            ref_trn2 (Optional[Union[Path, str]]): Path to reference TRN file for SClite eval.
             hyp_trn (Optional[Union[Path, str]]): Path to hypothesis TRN file for SClite eval.
             tmp_dir (Optional[Union[Path, str]]): Sclite requires building a bunch of stuff. Where to create temp dir to build this all in.
             sclite (bool) : Use Sclite if True, else Jiwer. Defaults to False (Jiwer).
@@ -87,21 +91,30 @@ class ASREval:
 
         # buildin TRNs for sclite eval
         if sclite:
-            # need all 3
-            if ref_trn and hyp_trn and tmp_dir:
+            # need all 4
+            if ref_trn1 and ref_trn2 and hyp_trn and tmp_dir:
                 self.sclite = True
-                self.ref_trn = Path(ref_trn)
+                self.ref_trn1 = Path(ref_trn1)
+                self.ref_trn2 = Path(ref_trn2)
                 self.hyp_trn = Path(hyp_trn)
                 # need to build temp directory to build sclite files
                 self.tmp_dir = Path(tmp_dir)
                 self.tmp_dir.mkdir(parents=True, exist_ok=True)
 
-                self.ref_map = self...
+                self.ref_map1 = (
+                    trn_utils.load_trn_map(self.ref_trn1) if self.ref_trn1 else None
+                )
+                self.ref_map2 = (
+                    trn_utils.load_trn_map(self.ref_trn2) if self.ref_trn2 else None
+                )
+                self.hyp_map = (
+                    trn_utils.load_trn_map(self.hyp_trn) if self.hyp_trn else None
+                )
 
             else:
                 raise ValueError(
                     {
-                        f"For SClite evaluation, .trn files are needed. Instead got\nref_trn:\t{ref_trn}\nhyp_trn:\t{hyp_trn}\ntmp_dir:\t{tmp_dir}\n"
+                        f"For SClite evaluation, .trn files are needed. Instead got\nref_trn1:\t{ref_trn1}\nref_trn2:\t{ref_trn2}\nhyp_trn:\t{hyp_trn}\ntmp_dir:\t{tmp_dir}\n"
                     }
                 )
 
@@ -167,8 +180,34 @@ class ASREval:
 
         with tempfile.TemporaryDirectory(dir=self.tmp_dir) as tmpdir:
             tmpdir = Path(tmpdir)
-            ref_split = tmpdir / "ref.trn"
+            ref_split1 = tmpdir / "ref1.trn"
+            ref_split2 = tmpdir / "ref2.trn"
+            sgml_out1 = tmpdir / "out1.sgml"
+            sgml_out2 = tmpdir / "out2.sgml"
             hyp_split = tmpdir / "hyp.trn"
-            sgml_out = tmpdir / "out.sgml"
 
-            ifself...
+            if self.ref_map1 is not None:
+                trn_utils.write_subset_trn(self.ref_map1, utt_ids, ref_split1)
+            else:
+                trn_utils.write_trn(list(df[self.refs_col]), utt_ids, ref_split1)
+
+            if self.ref_map2 is not None:
+                trn_utils.write_subset_trn(self.ref_map2, utt_ids, ref_split2)
+            else:
+                trn_utils.write_trn(list(df[self.refs_col]), utt_ids, ref_split2)
+
+            if self.hyp_map is not None:
+                trn_utils.write_subset_trn(self.hyp_map, utt_ids, hyp_split)
+            else:
+                trn_utils.write_trn(list(df[self.hyps_col]), utt_ids, hyp_split)
+
+            success1 = trn_utils.run_sclite(
+                str(ref_split1), str(hyp_split), str(sgml_out1)
+            )
+            success2 = trn_utils.run_sclite(
+                str(ref_split2), str(hyp_split), str(sgml_out2)
+            )
+            if not success1 and success2:  # cry
+                raise RuntimeError("Sclite failed")
+
+            return compute_from_sgml(sgml_out1, sgml_out2)
