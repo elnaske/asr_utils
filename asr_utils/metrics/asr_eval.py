@@ -1,7 +1,8 @@
 import pandas as pd
 import jiwer
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 from pathlib import Path
+import tempfile
 
 # TODO:
 # - load queries from file
@@ -18,6 +19,10 @@ class ASREval:
         hyps_col: str = "hypothesis",
         join: str = "inner",
         sep: str = None,
+        ref_trn: Optional[Union[Path, str]] = None,
+        hyp_trn: Optional[Union[Path, str]] = None,
+        tmp_dir: Optional[Union[Path, str]] = None,
+        sclite: bool = False,
     ):
         """Joins the files (CSV or TSV) containing the ASR hypotheses and reference transcriptions on the specified key.
         Allows WER and CER to be calculated for a subset of the data using a dataframe query.
@@ -30,10 +35,15 @@ class ASREval:
             hyps_col (str, optional): Column in `hyps_file` containing the hypotheses. Defaults to "hypothesis".
             join (str, optional): Type of join used. Defaults to "inner".
             sep (str, optional): Separator used for reading files. If none, infers the separator from file suffix (',' for CSV). Defaults to None.
+            ref_trn (Optional[Union[Path, str]]): Path to reference TRN file for SClite eval.
+            hyp_trn (Optional[Union[Path, str]]): Path to hypothesis TRN file for SClite eval.
+            tmp_dir (Optional[Union[Path, str]]): Sclite requires building a bunch of stuff. Where to create temp dir to build this all in.
+            sclite (bool) : Use Sclite if True, else Jiwer. Defaults to False (Jiwer).
 
         Raises:
             ValueError: Column provided does not exist in the respective TSV.
         """
+
         refs_file = Path(refs_file)
         hyps_file = Path(hyps_file)
 
@@ -58,6 +68,11 @@ class ASREval:
         if hyps_col not in hyps_df.columns:
             raise ValueError(f"Column `{hyps_col}` not found in `{hyps_file}`.")
 
+        # adding the utt id for trn building if sclite inference
+        refs_df["utt_id"] = [
+            f"utt{i:06d}" for i in range(1, len(refs_df) + 1)
+        ]  # + 1 cause ids start at 1 with sclite
+
         # BHG - adding dropna to handle missing columns
         merged = pd.merge(refs_df, hyps_df, how=join, on=key).dropna(
             subset=[refs_col, hyps_col]
@@ -68,6 +83,30 @@ class ASREval:
 
         self.refs_col = refs_col
         self.hyps_col = hyps_col
+        self.key = key
+
+        # buildin TRNs for sclite eval
+        if sclite:
+            # need all 3
+            if ref_trn and hyp_trn and tmp_dir:
+                self.sclite = True
+                self.ref_trn = Path(ref_trn)
+                self.hyp_trn = Path(hyp_trn)
+                # need to build temp directory to build sclite files
+                self.tmp_dir = Path(tmp_dir)
+                self.tmp_dir.mkdir(parents=True, exist_ok=True)
+
+                self.ref_map = self...
+
+            else:
+                raise ValueError(
+                    {
+                        f"For SClite evaluation, .trn files are needed. Instead got\nref_trn:\t{ref_trn}\nhyp_trn:\t{hyp_trn}\ntmp_dir:\t{tmp_dir}\n"
+                    }
+                )
+
+        else:
+            self.sclite = False
 
     def eval(self) -> Tuple[float, float]:
         """Calculate error metrics for the entire dataset.
@@ -76,7 +115,10 @@ class ASREval:
         Returns:
             dict: Dict containing computed metrics
         """
-        return self._compute_metrics(self.df)
+        if self.sclite:
+            return self._compute_metrics_sclite(self.df)
+        else:
+            return self._compute_metrics_jiwer(self.df)
 
     def eval_with_query(self, query: str) -> Tuple[float, float]:
         """Calculate error metrics for the subset of the data that matches the provided query.
@@ -89,9 +131,12 @@ class ASREval:
             dict: Dict containing computed metrics
         """
         q = self.df.query(query)
-        return self._compute_metrics(q)
+        if self.sclite:
+            return self._compute_metrics_sclite(q)
+        else:
+            return self._compute_metrics_jiwer(q)
 
-    def _compute_metrics(self, df: pd.DataFrame) -> Tuple[float, float]:
+    def _compute_metrics_jiwer(self, df: pd.DataFrame) -> Tuple[float, float]:
         refs = list(df[self.refs_col])
         hyps = list(df[self.hyps_col])
 
@@ -115,3 +160,15 @@ class ASREval:
             "c_hits": c_out.hits,
             "c_count": c_out.hits + c_out.substitutions + c_out.deletions,
         }
+
+    def _compute_metrics_sclite(self, df: pd.DataFrame) -> Tuple[float, float]:
+
+        utt_ids = list(df["utt_id"])
+
+        with tempfile.TemporaryDirectory(dir=self.tmp_dir) as tmpdir:
+            tmpdir = Path(tmpdir)
+            ref_split = tmpdir / "ref.trn"
+            hyp_split = tmpdir / "hyp.trn"
+            sgml_out = tmpdir / "out.sgml"
+
+            ifself...
