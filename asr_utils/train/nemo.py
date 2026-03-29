@@ -5,6 +5,9 @@ from peft import LoraConfig, get_peft_model
 from typing import Optional
 from lightning.pytorch.callbacks import ModelCheckpoint
 
+from asr_utils.models.nemo_mtl import NemoMTLModel
+from torch import nn
+
 # Argument format references:
 # model_tag = "nvidia/parakeet-rnnt-0.6b"
 # train_cfg = {"manifest_filepath": "manifest.json",
@@ -35,6 +38,7 @@ def fine_tune_nemo_model(
     optim_cfg: dict,
     trainer_kwargs: dict,
     lora_cfg: Optional[LoraConfig] = None,
+    mtl_cfg: Optional[dict] = None,
 ):
     """Function for fine-tuning NeMo ASR models.
     Performs full fine-tuning by default.
@@ -49,11 +53,20 @@ def fine_tune_nemo_model(
         trainer_kwargs (dict): Keyword arguments used when instantiating the Lightning trainer.
         lora_cfg (LoraConfig, optional): LoRA configuration. If not None, all other layers will be frozen
                                          and only the adapters will be trained. Defaults to None.
+        mtl_cfg (dict, optional) : Dict containing configuration for multi-task learning. Required keys: "mtl_branch", "mtl_classes", "mtl_loss_coeff". Defaults to None.
     """
-    asr_model = nemo_asr.models.ASRModel.from_pretrained(model_tag)
+    if mtl_cfg:
+        print("Doing multi-task learning")
+        assert issubclass(mtl_cfg["mtl_branch"], nn.Module)
+        assert isinstance(mtl_cfg["mtl_classes"], list)
+        assert isinstance(mtl_cfg["mtl_loss_coeff"],ssssssssssssssssssssss float)
+        asr_model = NemoMTLModel.from_pretrained(model_tag, strict=False)
+        asr_model.add_mtl_branch(mtl_cfg["mtl_branch"], mtl_cfg["mtl_classes"], mtl_cfg["mtl_loss_coeff"])
+    else:
+        asr_model = nemo_asr.models.ASRModel.from_pretrained(model_tag)
     asr_model.setup_training_data(train_data_cfg)
     asr_model.setup_validation_data(val_data_cfg)
-    asr_model.setup_optimization(optim_cfg)  # TIP: increase LR
+    asr_model.setup_optimization(optim_cfg)
 
     saving_tag = model_tag.replace("/", "_")
     checkpoint_callback = ModelCheckpoint(
@@ -74,7 +87,11 @@ def fine_tune_nemo_model(
     if lora_cfg:
         print("Using LoRA")
 
+        # TODO: get_peft_model should modify asr_model in place, replace lora_model.base_model.model with asr_model
         lora_model = get_peft_model(asr_model, lora_cfg)
+        if mtl_cfg:
+            for param in lora_model.base_model.model.mtl_branch.parameters():
+                param.requires_grad = True
 
         # kind of hacky, but PeftModel doesn't work with Lightning
         lora_model.base_model.model.set_trainer(trainer)
