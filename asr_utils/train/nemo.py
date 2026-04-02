@@ -8,28 +8,6 @@ from lightning.pytorch.callbacks import ModelCheckpoint
 from asr_utils.models.nemo_mtl import NemoMTLModel
 from torch import nn
 
-# Argument format references:
-# model_tag = "nvidia/parakeet-rnnt-0.6b"
-# train_cfg = {"manifest_filepath": "manifest.json",
-#              "sample_rate": 16000, "batch_size": 8}
-# val_cfg = {"manifest_filepath": "manifest.json",
-#            "sample_rate": 16000, "batch_size": 8}
-# optim_cfg = {}
-
-# trainer_kwargs = {}
-
-# lora_config = LoraConfig(
-#     r=16,
-#     lora_alpha=16,
-#     lora_dropout=0.05,
-#     target_modules=[
-#         "linear_q",
-#         "linear_v",
-#         "linear1",
-#         "linear2",
-#     ]
-# )
-
 
 def fine_tune_nemo_model(
     model_tag: str,
@@ -59,7 +37,7 @@ def fine_tune_nemo_model(
         print("Doing multi-task learning")
         assert issubclass(mtl_cfg["mtl_branch"], nn.Module)
         assert isinstance(mtl_cfg["mtl_classes"], list)
-        assert isinstance(mtl_cfg["mtl_loss_coeff"],ssssssssssssssssssssss float)
+        assert isinstance(mtl_cfg["mtl_loss_coeff"], float)
         asr_model = NemoMTLModel.from_pretrained(model_tag, strict=False)
         asr_model.add_mtl_branch(mtl_cfg["mtl_branch"], mtl_cfg["mtl_classes"], mtl_cfg["mtl_loss_coeff"])
     else:
